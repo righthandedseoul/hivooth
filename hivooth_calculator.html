@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>하이부스 예산 산출하기</title>
+
+    <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.js"></script>
+    <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+
+    <style>
+        /* CSS: 디자인 스타일 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+            color: #333;
+        }
+        .calculator-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .input-group label {
+            flex: 2;
+            font-weight: bold;
+        }
+        .input-group input[type="text"], .input-group select {
+            flex: 3;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            border: 2px solid #FF5B1A; 
+            border-radius: 8px;
+            background-color: #fff4f1;
+            text-align: center;
+        }
+        .result-box h3 {
+            margin-top: 0;
+            color: #FF5B1A;
+        }
+        .total-price-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            margin: 10px 0;
+            height: 40px;
+        }
+        .total-price {
+            font-size: 2em;
+            font-weight: bold;
+            color: #e74c3c;
+            line-height: 1;
+        }
+        .alpha-text {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-left: 5px;
+            line-height: 1;
+        }
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px dashed #ccc;
+            padding-top: 5px;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+        .discount-item {
+            color: #27ae60;
+            font-weight: bold;
+            border-top: 1px dashed #ccc;
+            padding-top: 5px;
+            margin-top: 5px;
+        }
+        .notice {
+            margin-top: 20px;
+            font-size: 0.8em;
+            color: #999;
+            text-align: left;
+        }
+        .notice ul {
+            padding-left: 20px;
+        }
+        .notice strong { 
+            font-weight: bold;
+            color: #555;
+        }
+        .calculated-days {
+            font-size: 1.1em;
+            color: #3498db;
+            font-weight: bold;
+            text-align: right;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="calculator-container">
+        <h2>💰 하이부스 예산 산출하기</h2>
+
+        <div class="input-group">
+            <label for="startDate">대여 시작일</label>
+            <input type="text" id="startDate" readonly>
+        </div>
+        <div class="input-group">
+            <label for="endDate">대여 종료일</label>
+            <input type="text" id="endDate" readonly>
+        </div>
+        
+        <div class="calculated-days" id="daySummary">총 대여일수: 0일</div>
+        
+        <div class="input-group">
+            <label for="boothQty">하이 부스 개수 (1동 기준)</label>
+            <select id="boothQty"></select>
+        </div>
+        <div class="input-group">
+            <label for="coverQty">옆가림막 세트 개수 (6면)</label>
+            <select id="coverQty"></select>
+        </div>
+        <div class="input-group">
+            <label for="lightQty">라인 조명 세트 개수</label>
+            <select id="lightQty"></select>
+        </div>
+        <div class="input-group">
+            <label for="region">운송 지역</label>
+            <select id="region">
+                <option value="seoulGyeonggi" selected>서울/경기 (기본)</option>
+                <option value="other">그 외 지역</option>
+            </select>
+        </div>
+
+        <div class="result-box">
+            <h3>✅ 예상 총 견적</h3>
+            <div id="resultDetails"></div>
+            <div class="total-price-container">
+                <div class="total-price" id="totalPrice">0 원</div>
+                <div id="alphaText" class="alpha-text" style="display:none;">+α</div>
+            </div>
+        </div>
+
+        <div class="notice">
+            <p>※ 주의 사항:</p>
+            <ul>
+                <li>본 금액은 <strong>정가 기준</strong>으로 계산되었으며, 프로모션 할인이 적용된 최종 금액입니다.</li>
+                <li>대여일 기준 앞뒤로 각 1일의 설치, 철수기간이 필요합니다.</li>
+                <li>운송비는 설치와 철수 비용이 포함되어 있습니다.</li>
+                <li>운송비는 서울/경기 기본 요금이 기준이며, 설치/철수 장소의 작업 환경에 따라 <strong>별도의 작업비</strong>가 발생할 수 있습니다. 서울/경기 외 지역의 운송비는 별도 문의가 필요합니다.</li>
+                <li><strong>최종 견적</strong>은 VAT 및 취소/환불 규정 등을 포함하여 계약서로 확인하셔야 합니다.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript: 계산 로직 및 캘린더/드롭다운 초기화
+        
+        // 1. 상수 정의
+        const PRICE_BOOTH_REGULAR_PER_DAY = 200000;
+        const PRICE_BOOTH_DISCOUNT = 100000;
+        const PRICE_COVER = 20000;
+        const PRICE_LIGHT = 30000;
+        const MAX_QTY = 20;
+        const SHIPPING_RATES = {
+            '1_to_10': 250000,
+            '11_to_20': 400000
+        };
+
+        // 2. 수량 드롭다운 옵션 생성 함수
+        function populateQuantityDropdowns() {
+            const qtyDropdowns = ['boothQty', 'coverQty', 'lightQty'];
+            qtyDropdowns.forEach(id => {
+                const selectEl = document.getElementById(id);
+                
+                // 0개 옵션 추가
+                if (id !== 'boothQty') {
+                    const optionZero = document.createElement('option');
+                    optionZero.value = 0;
+                    optionZero.textContent = '0 개';
+                    selectEl.appendChild(optionZero);
+                }
+
+                // 1부터 MAX_QTY까지 옵션 생성
+                for (let i = 1; i <= MAX_QTY; i++) {
+                    const option = document.createElement('option');
+                    option.value = i;
+                    option.textContent = i + ' 개';
+                    selectEl.appendChild(option);
+                }
+            });
+        }
+        
+        // 3. 캘린더 초기화 및 설정 (jQuery UI)
+        function initializeDatepickers() {
+            const startDateEl = $('#startDate');
+            const endDateEl = $('#endDate');
+
+            $.datepicker.setDefaults({
+                dateFormat: 'yy-mm-dd',
+                minDate: 0,
+                monthNames: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+                dayNamesMin: ['일', '월', '화', '수', '목', '금', '토']
+            });
+
+            startDateEl.datepicker({
+                onSelect: function(selectedDate) {
+                    endDateEl.datepicker('option', 'minDate', selectedDate);
+                    calculateEstimate();
+                }
+            });
+
+            endDateEl.datepicker({
+                onSelect: function(selectedDate) {
+                    calculateEstimate();
+                }
+            });
+            
+            // 초기값 설정
+            startDateEl.datepicker('setDate', '2025-12-05');
+            endDateEl.datepicker('setDate', '2025-12-07');
+        }
+
+        // 4. 날짜 차이 계산 및 요약 함수
+        function getRentalDays() {
+            const startDate = $('#startDate').datepicker('getDate');
+            const endDate = $('#endDate').datepicker('getDate');
+            const daySummaryEl = document.getElementById('daySummary');
+            
+            if (!startDate || !endDate) {
+                daySummaryEl.textContent = '총 대여일수: 0일';
+                return 0;
+            }
+
+            const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+            const oneDay = 1000 * 60 * 60 * 24;
+            const rentalDays = Math.ceil(diffTime / oneDay) + 1;
+            
+            daySummaryEl.innerHTML = `총 대여일수: ${rentalDays}일`;
+            return rentalDays;
+        }
+
+
+        // 5. 계산 함수
+        function calculateEstimate() {
+            const rentalDays = getRentalDays();
+            
+            if (rentalDays <= 0) {
+                document.getElementById('totalPrice').textContent = "날짜를 선택해 주세요.";
+                document.getElementById('resultDetails').innerHTML = "";
+                document.getElementById('alphaText').style.display = 'none'; 
+                return;
+            }
+
+            const boothQty = parseInt(document.getElementById('boothQty').value) || 0;
+            const coverQty = parseInt(document.getElementById('coverQty').value) || 0;
+            const lightQty = parseInt(document.getElementById('lightQty').value) || 0;
+            const region = document.getElementById('region').value;
+
+            // A. 정가 계산 및 할인 금액 계산
+            const boothRegularPrice = boothQty * PRICE_BOOTH_REGULAR_PER_DAY * rentalDays;
+            const boothDiscount = boothQty * PRICE_BOOTH_DISCOUNT * rentalDays * -1; // 마이너스 값
+
+            // B. 운송비 계산
+            let shippingPrice = 0;
+            let shippingDetailText = '서울/경기 기준';
+            let needsAlpha = false; 
+
+            if (boothQty >= 1 && boothQty <= 10) {
+                shippingPrice = SHIPPING_RATES['1_to_10'];
+            } else if (boothQty >= 11 && boothQty <= 20) {
+                shippingPrice = SHIPPING_RATES['11_to_20'];
+            } else if (boothQty > 20) {
+                shippingPrice = SHIPPING_RATES['11_to_20']; 
+                needsAlpha = true; 
+            }
+
+            if (region === 'other') {
+                shippingDetailText = '기본 비용 + 추가 비용 발생'; 
+                needsAlpha = true; 
+            }
+            
+            // C. 기타 옵션 비용 (0개 선택 시 0원)
+            const coverPrice = coverQty * PRICE_COVER;
+            const lightPrice = lightQty * PRICE_LIGHT;
+
+            // D. 최종 합산
+            const totalEstimate = boothRegularPrice + boothDiscount + shippingPrice + coverPrice + lightPrice;
+            
+            // 6. 결과 출력 포맷
+            const formatPrice = (price) => price.toLocaleString('ko-KR') + ' 원';
+
+            let detailsHTML = `
+                <div class="detail-item"><span>하이 부스 대여료 정가 (${boothQty}동 x ${rentalDays}일)</span><span>${formatPrice(boothRegularPrice)}</span></div>
+                <div class="discount-item detail-item"><span>프로모션 할인 (-50%)</span><span>${formatPrice(boothDiscount)}</span></div>
+                <div class="detail-item"><span>운송비 (${shippingDetailText})</span><span>${formatPrice(shippingPrice)}</span></div>
+                ${coverPrice !== 0 ? `<div class="detail-item"><span>옆가림막 (${coverQty}세트)</span><span>${formatPrice(coverPrice)}</span></div>` : ''}
+                ${lightPrice !== 0 ? `<div class="detail-item"><span>라인 조명 (${lightQty}세트)</span><span>${formatPrice(lightPrice)}</span></div>` : ''}
+            `;
+            
+            document.getElementById('totalPrice').textContent = formatPrice(totalEstimate);
+            document.getElementById('resultDetails').innerHTML = detailsHTML;
+            
+            document.getElementById('alphaText').style.display = needsAlpha ? 'block' : 'none';
+        }
+
+        // 7. 초기화 및 이벤트 리스너 등록
+        $(function() {
+            populateQuantityDropdowns();
+            initializeDatepickers();
+            
+            $('#boothQty, #coverQty, #lightQty, #region').on('change', calculateEstimate);
+            
+            // 초기값 설정 및 계산
+            $('#boothQty').val('10');
+            $('#coverQty').val('0');
+            $('#lightQty').val('0');
+            calculateEstimate();
+        });
+    </script>
+</body>
+</html>
